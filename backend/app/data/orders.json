@@ -1,0 +1,248 @@
+[
+  {
+    "order_id": "ORD-10001",
+    "placed_at": "2026-01-05T14:22:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "visa",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2026-01-10T10:40:00-05:00",
+    "delivered_at": "2026-01-10T10:40:00-05:00",
+    "items": [
+      { "sku": "APP-TSH-001-BLK-M", "qty": 1, "unit_price": 29.0 },
+      { "sku": "ACC-BLT-220-BLK", "qty": 1, "unit_price": 95.0 }
+    ]
+  },
+  {
+    "order_id": "ORD-10002",
+    "placed_at": "2026-01-12T13:10:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "paypal",
+    "is_gift": true,
+    "gift_recipient_email": "recipient@example.com",
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2026-01-16T16:05:00-05:00",
+    "delivered_at": "2026-01-16T16:05:00-05:00",
+    "items": [
+      { "sku": "ACC-BAG-930-BLK", "qty": 1, "unit_price": 189.0 }
+    ]
+  },
+  {
+    "order_id": "ORD-10003",
+    "placed_at": "2026-01-20T11:50:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "mastercard",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "overnight",
+    "outbound_shipping_paid": 15.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2026-01-22T09:12:00-05:00",
+    "delivered_at": "2026-01-22T09:12:00-05:00",
+    "items": [
+      { "sku": "FTW-SNK-101-WHT-09", "qty": 1, "unit_price": 129.0 }
+    ]
+  },
+  {
+    "order_id": "ORD-10004",
+    "placed_at": "2025-12-18T19:02:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "visa",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2025-12-24T15:30:00-05:00",
+    "delivered_at": "2025-12-24T15:30:00-05:00",
+    "items": [
+      { "sku": "APP-JNS-210-IND-32", "qty": 1, "unit_price": 139.0 }
+    ],
+    "holiday_window": true
+  },
+  {
+    "order_id": "ORD-10005",
+    "placed_at": "2025-11-22T10:15:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "amex",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2025-11-27T12:10:00-05:00",
+    "delivered_at": "2025-11-27T12:10:00-05:00",
+    "items": [
+      { "sku": "APP-DRS-777-RED-S", "qty": 1, "unit_price": 89.97 }
+    ],
+    "holiday_window": true
+  },
+  {
+    "order_id": "ORD-10006",
+    "placed_at": "2026-01-02T09:05:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "visa",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2026-01-06T14:45:00-05:00",
+    "delivered_at": "2026-01-06T14:45:00-05:00",
+    "items": [
+      { "sku": "APP-HDY-014-GRY-L", "qty": 1, "unit_price": 74.0 }
+    ]
+  },
+  {
+    "order_id": "ORD-10007",
+    "placed_at": "2026-01-08T14:58:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "visa",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "in_transit",
+    "tracking_last_scan_at": "2026-01-11T10:00:00-05:00",
+    "delivered_at": null,
+    "items": [
+      { "sku": "ACC-BLT-220-BLK", "qty": 1, "unit_price": 95.0 }
+    ]
+  },
+  {
+    "order_id": "ORD-10008",
+    "placed_at": "2026-01-10T12:30:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "paypal",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "label_created",
+    "tracking_last_scan_at": "2026-01-10T12:35:00-05:00",
+    "delivered_at": null,
+    "items": [
+      { "sku": "APP-TSH-001-BLK-M", "qty": 2, "unit_price": 29.0 }
+    ]
+  },
+  {
+    "order_id": "ORD-10009",
+    "placed_at": "2026-01-03T10:40:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "mastercard",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2026-01-04T18:20:00-05:00",
+    "delivered_at": "2026-01-04T18:20:00-05:00",
+    "items": [
+      { "sku": "ACC-GFT-100", "qty": 1, "unit_price": 100.0 }
+    ]
+  },
+  {
+    "order_id": "ORD-10010",
+    "placed_at": "2025-12-10T15:10:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "visa",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2025-12-15T11:00:00-05:00",
+    "delivered_at": "2025-12-15T11:00:00-05:00",
+    "items": [
+      { "sku": "APP-JNS-210-IND-32", "qty": 5, "unit_price": 139.0 }
+    ],
+    "notes": "bulk_order_same_sku"
+  },
+  {
+    "order_id": "ORD-10011",
+    "placed_at": "2026-01-18T09:00:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "amex",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2026-01-20T13:45:00-05:00",
+    "delivered_at": "2026-01-20T13:45:00-05:00",
+    "items": [
+      { "sku": "ACC-WAT-910-SLV", "qty": 1, "unit_price": 599.0 }
+    ],
+    "notes": "high_value_item"
+  },
+  {
+    "order_id": "ORD-10012",
+    "placed_at": "2025-09-01T08:30:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "visa",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2025-09-05T12:00:00-05:00",
+    "delivered_at": "2025-09-05T12:00:00-05:00",
+    "items": [
+      { "sku": "FTW-BOT-550-BRN-10", "qty": 1, "unit_price": 249.0 }
+    ],
+    "notes": "outside_standard_return_window_good_for_late_return_escalation_demo"
+  },
+  {
+    "order_id": "ORD-10013",
+    "placed_at": "2026-01-23T15:59:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "visa",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2026-01-25T09:30:00-05:00",
+    "delivered_at": "2026-01-25T09:30:00-05:00",
+    "items": [
+      { "sku": "APP-HDY-014-GRY-L", "qty": 1, "unit_price": 74.0 },
+      { "sku": "ACC-BAG-930-BLK", "qty": 1, "unit_price": 189.0 }
+    ]
+  },
+  {
+    "order_id": "ORD-10014",
+    "placed_at": "2026-01-21T10:05:00-05:00",
+    "region": "US",
+    "currency": "USD",
+    "payment_method": "paypal",
+    "is_gift": false,
+    "gift_recipient_email": null,
+    "shipping_method": "standard",
+    "outbound_shipping_paid": 0.0,
+    "tracking_status": "delivered",
+    "tracking_last_scan_at": "2026-01-22T11:20:00-05:00",
+    "delivered_at": "2026-01-22T11:20:00-05:00",
+    "items": [
+      { "sku": "APP-CUS-901-NVY-M", "qty": 1, "unit_price": 79.0 }
+    ],
+    "notes": "custom_personalized_non_returnable_demo"
+  }
+]

@@ -1,0 +1,40 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Virtual environments ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- Environment files / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Local DB / storage ---
+*.db
+*.sqlite
+*.sqlite3
+backend/app/storage/
+!backend/app/storage/.gitkeep
+
+# --- Chroma / embeddings persistence ---
+**/chroma/
+**/chromadb/
+**/app/storage/chroma/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

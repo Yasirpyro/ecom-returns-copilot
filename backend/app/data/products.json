@@ -1,0 +1,115 @@
+[
+  {
+    "sku": "APP-TSH-001-BLK-M",
+    "name": "Everyday Cotton Tee",
+    "category": "apparel",
+    "price": 29.0,
+    "currency": "USD",
+    "is_final_sale": false,
+    "care": "Machine wash cold, tumble dry low",
+    "warranty_days": 90
+  },
+  {
+    "sku": "APP-HDY-014-GRY-L",
+    "name": "Fleece Pullover Hoodie",
+    "category": "apparel",
+    "price": 74.0,
+    "currency": "USD",
+    "is_final_sale": false,
+    "care": "Machine wash cold, hang dry only",
+    "warranty_days": 90
+  },
+  {
+    "sku": "APP-JNS-210-IND-32",
+    "name": "Selvedge Denim Jeans",
+    "category": "apparel",
+    "price": 139.0,
+    "currency": "USD",
+    "is_final_sale": false,
+    "care": "Wash inside-out, cold, hang dry",
+    "warranty_days": 90
+  },
+  {
+    "sku": "FTW-SNK-101-WHT-09",
+    "name": "Court Sneaker",
+    "category": "footwear_accessories",
+    "price": 129.0,
+    "currency": "USD",
+    "is_final_sale": false,
+    "care": "Spot clean only",
+    "warranty_days": 180
+  },
+  {
+    "sku": "FTW-BOT-550-BRN-10",
+    "name": "Leather Chelsea Boot",
+    "category": "footwear_accessories",
+    "price": 249.0,
+    "currency": "USD",
+    "is_final_sale": false,
+    "care": "Condition leather monthly",
+    "warranty_days": 180
+  },
+  {
+    "sku": "ACC-BLT-220-BLK",
+    "name": "Italian Leather Belt",
+    "category": "footwear_accessories",
+    "price": 95.0,
+    "currency": "USD",
+    "is_final_sale": false,
+    "care": "Wipe clean with dry cloth",
+    "warranty_days": 180
+  },
+  {
+    "sku": "ACC-BAG-930-BLK",
+    "name": "Weekender Travel Bag",
+    "category": "footwear_accessories",
+    "price": 189.0,
+    "currency": "USD",
+    "is_final_sale": false,
+    "care": "Wipe clean, air dry",
+    "warranty_days": 180
+  },
+  {
+    "sku": "APP-DRS-777-RED-S",
+    "name": "Satin Slip Dress",
+    "category": "apparel",
+    "price": 89.97,
+    "currency": "USD",
+    "is_final_sale": true,
+    "final_sale_reason": "clearance_price_ends_in_.97",
+    "care": "Dry clean only",
+    "warranty_days": 90
+  },
+  {
+    "sku": "ACC-GFT-100",
+    "name": "Digital Gift Card",
+    "category": "gift_card",
+    "price": 100.0,
+    "currency": "USD",
+    "is_final_sale": true,
+    "final_sale_reason": "gift_card_non_refundable",
+    "care": "",
+    "warranty_days": 0
+  },
+  {
+    "sku": "APP-CUS-901-NVY-M",
+    "name": "Monogram Polo (Custom)",
+    "category": "custom_personalized",
+    "price": 79.0,
+    "currency": "USD",
+    "is_final_sale": true,
+    "final_sale_reason": "custom_personalized_item",
+    "care": "Machine wash cold, hang dry",
+    "warranty_days": 90
+  },
+  {
+    "sku": "ACC-WAT-910-SLV",
+    "name": "Stainless Steel Watch",
+    "category": "footwear_accessories",
+    "price": 599.0,
+    "currency": "USD",
+    "is_final_sale": false,
+    "care": "Avoid water exposure beyond rated level",
+    "warranty_days": 180
+  }
+]
