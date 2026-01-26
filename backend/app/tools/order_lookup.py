@@ -13,8 +13,27 @@ def _load_json(path: Path) -> Any:
         return json.load(f)
 
 
+def _normalize_order_id(order_id: str) -> str:
+    raw = (order_id or "").strip()
+    if not raw:
+        return raw
+    raw = raw.upper().replace(" ", "")
+    if raw.startswith("ORD-"):
+        return raw
+    if raw.startswith("ORD") and raw[3:].isdigit():
+        return f"ORD-{raw[3:]}"
+    if raw.isdigit():
+        return f"ORD-{raw}"
+    return raw
+
+
 def get_order(order_id: str) -> Optional[Dict[str, Any]]:
     orders = _load_json(ORDERS_PATH)
+    normalized = _normalize_order_id(order_id)
+    for o in orders:
+        if o.get("order_id") == normalized:
+            return o
+    # Fallback: try raw input if normalization didn't help
     for o in orders:
         if o.get("order_id") == order_id:
             return o
