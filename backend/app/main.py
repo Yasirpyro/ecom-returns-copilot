@@ -17,7 +17,7 @@ load_dotenv()
 app = FastAPI(title="Ecommerce Returns & Refunds Copilot", version="0.1.0")
 
 origins = os.getenv("CORS_ORIGINS", "")
-allow_origins = [o.strip() for o in origins.split(",") if o.strip()] or ["*"]
+allow_origins = [o.strip().rstrip("/") for o in origins.split(",") if o.strip()] or ["*"]
 
 app.add_middleware(
     CORSMiddleware,
