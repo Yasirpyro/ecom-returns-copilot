@@ -1,6 +1,7 @@
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from dotenv import load_dotenv
@@ -91,6 +92,38 @@ def similarity_search_with_scores(
     return db.similarity_search_with_score(query, k=cfg.k)
 
 
+def _load_policy_docs_from_fs(policies_dir: str) -> List[Document]:
+    base = Path(policies_dir)
+    if not base.exists():
+        return []
+    docs: List[Document] = []
+    for path in base.glob("**/*.md"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        docs.append(Document(page_content=text, metadata={"source": path.name}))
+    return docs
+
+
+def _fallback_retrieve_policy_chunks(query: str, *, cfg: RetrieverConfig) -> List[Document]:
+    docs = _load_policy_docs_from_fs(os.getenv("POLICIES_DIR", "app/policies"))
+    if not docs:
+        return []
+
+    q = query.lower()
+    terms = [t for t in re.split(r"\W+", q) if len(t) > 3]
+
+    def score(doc: Document) -> float:
+        text = (doc.page_content or "").lower()
+        hits = sum(text.count(t) for t in terms) or 0
+        # lower is better to match existing distance semantics
+        return 1.0 / (1 + hits)
+
+    ranked = sorted(docs, key=score)
+    return ranked[: cfg.max_results]
+
+
 def _rerank_for_query(query: str, doc: Document, distance: float) -> float:
     """
     Produce a 'better is lower' score by adjusting the distance with simple lexical hints.
@@ -125,7 +158,11 @@ def retrieve_policy_chunks_strict(
     cfg: Optional[RetrieverConfig] = None,
 ) -> List[Document]:
     cfg = cfg or load_retriever_config_from_env()
-    results = similarity_search_with_scores(query, cfg=cfg)
+    try:
+        results = similarity_search_with_scores(query, cfg=cfg)
+    except Exception:
+        # Fallback to filesystem policy retrieval when embeddings are unavailable
+        return _fallback_retrieve_policy_chunks(query, cfg=cfg)
 
     # Optional routing: filter candidates to a specific policy file.
     if cfg.enable_routing:
