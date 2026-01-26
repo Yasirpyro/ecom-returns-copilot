@@ -40,8 +40,9 @@ def validate_citations_node(state: GraphState) -> GraphState:
     state.setdefault("retries", 0)
     if errors and state["retries"] < 1:
         state["retries"] += 1
-        # Force next draft to use the quality model
-        state["llm_profile"] = "quality"
+        # Retry draft with higher token cap
+        state["llm_profile"] = "draft"
+        state["draft_max_tokens"] = 220
         state["errors"] = (state.get("errors") or []) + errors
         # Signal graph to loop (returns_graph will use this)
         state["escalate"] = False

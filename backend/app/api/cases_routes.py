@@ -2,8 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from dotenv import load_dotenv
 
 from app.cases.repo import (
@@ -11,9 +10,9 @@ from app.cases.repo import (
     get_case,
     list_cases,
     set_human_decision,
-    set_final_reply,
     update_status,
 )
+from app.security.basic_auth import require_reviewer_basic_auth
 
 load_dotenv()
 
@@ -23,12 +22,12 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "app/storage/uploads"))
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000")
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_reviewer_basic_auth)])
 def cases_list(status: Optional[str] = None):
     return {"data": list_cases(status=status)}
 
 
-@router.get("/{case_id}")
+@router.get("/{case_id}", dependencies=[Depends(require_reviewer_basic_auth)])
 def case_detail(case_id: str):
     case = get_case(case_id)
     if not case:
@@ -67,7 +66,7 @@ async def upload_photo(case_id: str, file: UploadFile = File(...)):
     return {"case_id": case_id, "photo_url": photo_url}
 
 
-@router.post("/{case_id}/decision")
+@router.post("/{case_id}/decision", dependencies=[Depends(require_reviewer_basic_auth)])
 def human_decision(case_id: str, decision: str, notes: Optional[str] = None):
     """
     decision must be one of:

@@ -20,3 +20,58 @@ Quick sanity check:
 ```powershell
 python -c "import chromadb; import chroma_hnswlib; import numpy; print('ok')"
 ```
+
+## OpenRouter configuration
+
+Create an environment file from [backend/.env.example](backend/.env.example) and set your key:
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+# then edit backend\.env and set OPENROUTER_API_KEY
+```
+
+Required:
+- `OPENROUTER_API_KEY`
+
+Optional (recommended):
+- `OPENROUTER_APP_URL` (default: http://localhost:8000)
+- `OPENROUTER_APP_NAME` (default: ecom-returns-copilot)
+
+## Run the API
+
+```powershell
+cd backend
+uvicorn app.main:app --reload --port 8000
+```
+
+## Example request flow
+
+1) Start a chat session:
+
+```
+POST /chat/start
+```
+
+2) Send a chat message:
+
+```
+POST /chat/{session_id}
+```
+
+3) Upload photos for a case (if required):
+
+```
+POST /cases/{case_id}/photos
+```
+
+4) Reviewer decision:
+
+```
+POST /cases/{case_id}/decision
+```
+
+5) Finalize (generates final customer reply + next actions):
+
+```
+POST /cases/{case_id}/finalize
+```

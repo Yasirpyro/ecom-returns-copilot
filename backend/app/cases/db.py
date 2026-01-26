@@ -45,3 +45,8 @@ def init_db() -> None:
             );
             """
         )
+        # Migration-safe add for existing DBs that predate next_actions_json
+        try:
+            conn.execute("ALTER TABLE cases ADD COLUMN next_actions_json TEXT")
+        except sqlite3.OperationalError:
+            pass

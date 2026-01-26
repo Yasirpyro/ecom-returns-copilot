@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, TypedDict, Literal
 from langchain_core.documents import Document
 
 
-LLMProfile = Literal["fast", "quality", "repair"]
+LLMProfile = Literal["draft", "finalize", "repair"]
 
 
 class GraphState(TypedDict, total=False):
@@ -23,7 +23,9 @@ class GraphState(TypedDict, total=False):
 
     # Routing / model selection
     complexity: int               # 1..5
-    llm_profile: LLMProfile       # fast/quality/repair
+    llm_profile: LLMProfile       # draft/finalize/repair
+    draft_temperature: float
+    draft_max_tokens: int
 
     # Outputs
     decision: Dict[str, Any]

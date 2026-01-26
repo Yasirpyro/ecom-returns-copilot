@@ -7,8 +7,10 @@ from pathlib import Path
 
 from app.api.routes import router as core_router
 from app.api.cases_routes import router as cases_router
-from app.cases.db import init_db
+from app.api.chat_routes import router as chat_router
 from app.api.finalize_routes import router as finalize_router
+from app.cases.db import init_db
+from app.chat.db import init_chat_db
 
 load_dotenv()
 
@@ -27,6 +29,7 @@ app.add_middleware(
 
 # Init SQLite tables
 init_db()
+init_chat_db()
 
 # Serve uploaded files
 upload_dir = Path(os.getenv("UPLOAD_DIR", "app/storage/uploads"))
@@ -35,4 +38,5 @@ app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
 
 app.include_router(core_router)
 app.include_router(cases_router)
-app.include_router(finalize_router)
+app.include_router(chat_router)
+app.include_router(finalize_router) 

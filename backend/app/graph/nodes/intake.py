@@ -41,12 +41,17 @@ def intake_node(state: GraphState) -> GraphState:
     complexity = _estimate_complexity(reason, msg)
 
     # Route model profile:
-    # - "fast" => qwen2.5:3b-instruct
-    # - "quality" => qwen2.5:7b-instruct
+    # - "draft" => default drafting profile
     # - "repair" => used only on retry (validate_citations triggers)
-    llm_profile = "fast" if complexity <= 2 else "quality"
+    llm_profile = "draft"
+
+    # Draft tuning based on complexity (keeps token caps and temperature explicit)
+    draft_max_tokens = 180 if complexity <= 2 else 220
+    draft_temperature = 0.2
 
     state["complexity"] = complexity
     state["llm_profile"] = llm_profile
+    state["draft_max_tokens"] = draft_max_tokens
+    state["draft_temperature"] = draft_temperature
     state.setdefault("retries", 0)
     return state

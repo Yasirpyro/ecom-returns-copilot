@@ -1,74 +1,100 @@
 from __future__ import annotations
-import os
-from dotenv import load_dotenv
 
-from langchain_ollama import ChatOllama
+from app.llm.openrouter import get_llm
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.graph.state import GraphState
 
-load_dotenv()
+SYSTEM = """You are a support-ops assistant generating the FINAL outcome after a human decision.
 
-FAST_MODEL = os.getenv("FAST_MODEL", "qwen2.5:3b-instruct")
-QUALITY_MODEL = os.getenv("QUALITY_MODEL", "qwen2.5:7b-instruct")
+You MUST output valid JSON only (no markdown, no extra text).
 
+You are given:
+- enriched order facts (includes items with sku, qty, product fields)
+- prior AI decision JSON
+- human decision (approved/denied/more_info_requested)
+- human notes
+- photo URLs (may exist)
+- policy excerpts
 
-SYSTEM = """You are assisting an ecommerce support agent AFTER a human review decision.
-You must:
-1) Produce a customer-facing message.
-2) Produce a JSON array of next actions for the internal system.
+Policy logic to apply for next actions when human_decision == "approved":
+- Preferred: issue_replacement of the exact SKU(s) affected
+- If replacement is not possible due to out-of-stock, issue_refund instead
+For this demo: assume replacement IS possible unless human_notes contains "out of stock".
 
-Rules:
-- Use only the provided order facts, decision, human decision, and policy excerpts.
-- Keep customer message concise and respectful.
-- If more info is requested, list exactly what is needed (e.g., photos, close-up, label).
-- Do not mention internal IDs.
+When human_decision == "denied":
+- Do not promise a refund/replacement.
+- Provide a concise explanation and, if applicable, mention standard return option (only if within return window is already indicated by the AI decision; if not sure, say it requires review).
 
-Output format (MUST be valid JSON):
+When human_decision == "more_info_requested":
+- Ask specifically for what info is missing (photos, angles, order_id, sku, care details).
+
+Output JSON schema:
 {
-  "customer_reply": "...",
+  "customer_reply": "string",
   "next_actions": [
-    { "type": "...", "summary": "...", "sku": "...", "qty": 1, "refund_amount": 0, "refund_method": "original_payment", "return_shipping_fee_waived": false }
+    {
+      "type": "issue_replacement|issue_refund|request_more_info|manual_agent_followup",
+      "summary": "string",
+      "sku": "string or null",
+      "qty": integer or null,
+      "refund_amount": number or null,
+      "refund_method": "original_payment|store_credit or null"
+    }
   ]
 }
 """
 
 
 def finalize_case_node(state: GraphState) -> GraphState:
-    # Choose model based on complexity
-    complexity = int(state.get("complexity") or 3)
-    model_name = QUALITY_MODEL if complexity >= 4 else FAST_MODEL
+    profile = state.get("llm_profile")
+    llm = get_llm("repair" if profile == "repair" else "finalize")
 
-    llm = ChatOllama(
-        model=model_name,
-        temperature=0.2,
-        top_p=0.9,
-        repeat_penalty=1.1,
-        num_predict=260 if model_name == QUALITY_MODEL else 200,
-    )
-
-    docs = state.get("policy_docs", [])[:2]
+    docs = (state.get("policy_docs") or [])[:2]
     policy_text = "\n\n".join([f"SOURCE: {d.metadata.get('source')}\n{d.page_content}" for d in docs])
 
-    prompt = f"""
-Order facts:
+    if state.get("force_minimal_prompt"):
+      prompt = f"""
+  order:
+  {state.get("order")}
+
+  ai_decision:
+  {state.get("decision")}
+
+  human_decision:
+  {state.get("human_decision")}
+
+  human_notes:
+  {state.get("human_notes")}
+
+  photo_urls:
+  {state.get("photo_urls")}
+  """.strip()
+    else:
+      prompt = f"""
+order:
 {state.get("order")}
 
-AI Decision JSON:
+ai_decision:
 {state.get("decision")}
 
-Human decision:
-{state.get("human_decision")}  # one of approved/denied/more_info_requested
-Human notes:
+human_decision:
+{state.get("human_decision")}
+
+human_notes:
 {state.get("human_notes")}
 
-Photo URLs:
+photo_urls:
 {state.get("photo_urls")}
 
-Policy excerpts:
+policy_excerpts:
 {policy_text}
 """.strip()
 
-    resp = llm.invoke([SystemMessage(content=SYSTEM), HumanMessage(content=prompt)])
-    state["finalize_output_raw"] = resp.content
+    system = SYSTEM
+    if state.get("force_json_only"):
+        system = SYSTEM + "\n\nSTRICT JSON ONLY. Return only valid JSON without any markdown or prose."
+
+    resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=prompt)])
+    state["finalize_output_raw"] = (resp.content or "").strip()
     return state
