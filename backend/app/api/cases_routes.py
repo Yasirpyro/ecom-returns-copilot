@@ -21,12 +21,17 @@ load_dotenv()
 router = APIRouter(prefix="/cases", tags=["cases"])
 
 # Configure Cloudinary (cloud storage for photos)
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-    secure=True
-)
+# Use CLOUDINARY_URL env var (simpler - contains all credentials in one variable)
+cloudinary_url = os.getenv("CLOUDINARY_URL")
+
+if not cloudinary_url:
+    raise ValueError(
+        "Missing CLOUDINARY_URL environment variable. "
+        "Get it from Cloudinary dashboard → Settings → API Keys → 'API environment variable'"
+    )
+
+# Cloudinary SDK automatically parses CLOUDINARY_URL if it exists in env
+# Format: cloudinary://api_key:api_secret@cloud_name
 
 
 @router.get("", dependencies=[Depends(require_reviewer_basic_auth)])
