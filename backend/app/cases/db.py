@@ -50,18 +50,3 @@ def init_db() -> None:
             conn.execute("ALTER TABLE cases ADD COLUMN next_actions_json TEXT")
         except sqlite3.OperationalError:
             pass
-        
-        # Create photos table to store base64 data (for Render's ephemeral storage)
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS photos (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              case_id TEXT NOT NULL,
-              filename TEXT NOT NULL,
-              content_type TEXT NOT NULL,
-              data BLOB NOT NULL,
-              created_at TEXT NOT NULL,
-              FOREIGN KEY (case_id) REFERENCES cases(case_id)
-            );
-            """
-        )

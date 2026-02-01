@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
+import cloudinary
+import cloudinary.uploader
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import Response
 from dotenv import load_dotenv
 
 from app.cases.repo import (
@@ -14,15 +14,19 @@ from app.cases.repo import (
     set_human_decision,
     update_status,
 )
-from app.cases.db import get_conn
 from app.security.basic_auth import require_reviewer_basic_auth
 
 load_dotenv()
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
-UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "app/storage/uploads"))
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000")
+# Configure Cloudinary (cloud storage for photos)
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True
+)
 
 
 @router.get("", dependencies=[Depends(require_reviewer_basic_auth)])
@@ -48,48 +52,30 @@ async def upload_photo(case_id: str, file: UploadFile = File(...)):
     if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(status_code=400, detail="Only jpg/png/webp images are allowed")
 
-    safe_name = Path(file.filename or "upload").name
-    content = await file.read()
-    
-    # Store photo in database (Render has ephemeral storage)
-    with get_conn() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO photos (case_id, filename, content_type, data, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (case_id, safe_name, file.content_type, content, datetime.utcnow().isoformat())
-        )
-        photo_id = cursor.lastrowid
-    
-    # Generate URL to serve photo from database
-    photo_url = f"{PUBLIC_BASE_URL}/cases/{case_id}/photos/{photo_id}"
-    add_photo(case_id, photo_url)
-
-    # After photo upload, move to human review if photos were required
-    if case.get("photos_required"):
-        update_status(case_id, "ready_for_human_review")
-
-    return {"case_id": case_id, "photo_url": photo_url}
-
-
-@router.get("/{case_id}/photos/{photo_id}")
-def get_photo(case_id: str, photo_id: int):
-    """Serve photo from database (for Render's ephemeral storage)"""
-    with get_conn() as conn:
-        row = conn.execute(
-            "SELECT filename, content_type, data FROM photos WHERE id = ? AND case_id = ?",
-            (photo_id, case_id)
-        ).fetchone()
+    # Upload to Cloudinary (cloud storage - persists across Render restarts)
+    try:
+        safe_name = Path(file.filename or "upload").stem
+        content = await file.read()
         
-        if not row:
-            raise HTTPException(status_code=404, detail="Photo not found")
-        
-        return Response(
-            content=row["data"],
-            media_type=row["content_type"],
-            headers={"Content-Disposition": f'inline; filename="{row["filename"]}"'}
+        # Upload with folder organization: ecom-returns/{case_id}/{filename}
+        result = cloudinary.uploader.upload(
+            content,
+            folder=f"ecom-returns/{case_id}",
+            public_id=safe_name,
+            resource_type="image"
         )
+        
+        photo_url = result["secure_url"]
+        add_photo(case_id, photo_url)
+
+        # After photo upload, move to human review if photos were required
+        if case.get("photos_required"):
+            update_status(case_id, "ready_for_human_review")
+
+        return {"case_id": case_id, "photo_url": photo_url}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload photo: {str(e)}")
 
 
 @router.post("/{case_id}/decision", dependencies=[Depends(require_reviewer_basic_auth)])

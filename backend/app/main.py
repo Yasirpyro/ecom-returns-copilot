@@ -2,8 +2,6 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 
 from app.api.routes import router as core_router
 from app.api.cases_routes import router as cases_router
@@ -30,11 +28,6 @@ app.add_middleware(
 # Init SQLite tables
 init_db()
 init_chat_db()
-
-# Serve uploaded files
-upload_dir = Path(os.getenv("UPLOAD_DIR", "app/storage/uploads"))
-upload_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
 
 app.include_router(core_router)
 app.include_router(cases_router)
