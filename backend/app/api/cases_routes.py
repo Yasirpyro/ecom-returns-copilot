@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import Response
 from dotenv import load_dotenv
 
 from app.cases.repo import (
@@ -12,6 +14,7 @@ from app.cases.repo import (
     set_human_decision,
     update_status,
 )
+from app.cases.db import get_conn
 from app.security.basic_auth import require_reviewer_basic_auth
 
 load_dotenv()
@@ -45,25 +48,48 @@ async def upload_photo(case_id: str, file: UploadFile = File(...)):
     if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(status_code=400, detail="Only jpg/png/webp images are allowed")
 
-    case_dir = UPLOAD_DIR / case_id
-    case_dir.mkdir(parents=True, exist_ok=True)
-
     safe_name = Path(file.filename or "upload").name
-    out_path = case_dir / safe_name
-
     content = await file.read()
-    out_path.write_bytes(content)
-
-    # public URL served by FastAPI static mount (added in main.py)
-    photo_url = f"{PUBLIC_BASE_URL}/uploads/{case_id}/{safe_name}"
+    
+    # Store photo in database (Render has ephemeral storage)
+    with get_conn() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO photos (case_id, filename, content_type, data, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (case_id, safe_name, file.content_type, content, datetime.utcnow().isoformat())
+        )
+        photo_id = cursor.lastrowid
+    
+    # Generate URL to serve photo from database
+    photo_url = f"{PUBLIC_BASE_URL}/cases/{case_id}/photos/{photo_id}"
     add_photo(case_id, photo_url)
 
     # After photo upload, move to human review if photos were required
-    # (you can require 1+ photos; for demo, 1 is enough)
     if case.get("photos_required"):
         update_status(case_id, "ready_for_human_review")
 
     return {"case_id": case_id, "photo_url": photo_url}
+
+
+@router.get("/{case_id}/photos/{photo_id}")
+def get_photo(case_id: str, photo_id: int):
+    """Serve photo from database (for Render's ephemeral storage)"""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT filename, content_type, data FROM photos WHERE id = ? AND case_id = ?",
+            (photo_id, case_id)
+        ).fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="Photo not found")
+        
+        return Response(
+            content=row["data"],
+            media_type=row["content_type"],
+            headers={"Content-Disposition": f'inline; filename="{row["filename"]}"'}
+        )
 
 
 @router.post("/{case_id}/decision", dependencies=[Depends(require_reviewer_basic_auth)])
