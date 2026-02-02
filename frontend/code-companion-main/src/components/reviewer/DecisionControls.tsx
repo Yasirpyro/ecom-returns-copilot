@@ -13,13 +13,15 @@ interface DecisionControlsProps {
   currentDecision: string | null;
   currentNotes: string | null;
   onDecisionSubmitted: () => void;
+  onCaseClosed?: () => void;
 }
 
 export function DecisionControls({ 
   caseId, 
   currentDecision, 
   currentNotes,
-  onDecisionSubmitted 
+  onDecisionSubmitted,
+  onCaseClosed
 }: DecisionControlsProps) {
   const [notes, setNotes] = useState(currentNotes || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +62,7 @@ export function DecisionControls({
         description: "Customer reply generated successfully",
       });
       onDecisionSubmitted();
+      onCaseClosed?.();
     } catch (error) {
       toast({
         title: "Failed to finalize case",

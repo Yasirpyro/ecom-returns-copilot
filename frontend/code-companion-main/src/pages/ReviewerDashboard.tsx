@@ -99,6 +99,7 @@ export default function ReviewerDashboard() {
             <CaseDetail
               caseId={selectedCaseId}
               onBack={() => setSelectedCaseId(null)}
+              onCaseClosed={() => setSelectedCaseId(null)}
             />
           ) : (
             <div className="text-center text-muted-foreground">

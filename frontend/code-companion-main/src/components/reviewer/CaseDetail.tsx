@@ -14,9 +14,10 @@ import { toast } from "@/hooks/use-toast";
 interface CaseDetailProps {
   caseId: string;
   onBack?: () => void;
+  onCaseClosed?: () => void;
 }
 
-export function CaseDetail({ caseId, onBack }: CaseDetailProps) {
+export function CaseDetail({ caseId, onBack, onCaseClosed }: CaseDetailProps) {
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -114,6 +115,7 @@ export function CaseDetail({ caseId, onBack }: CaseDetailProps) {
           currentDecision={caseData.human_decision}
           currentNotes={caseData.human_notes}
           onDecisionSubmitted={fetchCase}
+          onCaseClosed={onCaseClosed}
         />
       </div>
     </ScrollArea>

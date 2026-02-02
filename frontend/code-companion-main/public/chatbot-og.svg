@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#E0E7FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g transform="translate(350 135)">
+    <rect x="0" y="40" width="500" height="320" rx="48" fill="#4F46E5"/>
+    <rect x="90" y="120" width="70" height="70" rx="35" fill="#FFFFFF"/>
+    <rect x="340" y="120" width="70" height="70" rx="35" fill="#FFFFFF"/>
+    <rect x="160" y="230" width="180" height="36" rx="18" fill="#FFFFFF"/>
+    <rect x="235" y="0" width="30" height="30" rx="15" fill="#4F46E5"/>
+    <rect x="242" y="-18" width="16" height="26" rx="8" fill="#4F46E5"/>
+    <path d="M130 420 L210 360 H380 C430 360 470 320 470 270 V140" stroke="#4F46E5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="600" y="540" font-family="'Segoe UI', Arial, sans-serif" font-size="46" text-anchor="middle" fill="#1F2937">Returns &amp; Warranty Assistant</text>
+</svg>
