@@ -303,8 +303,11 @@ export default function CustomerChat() {
   }
 
   const isCaseActive = !!caseId && caseStatus !== 'closed';
+  const isCaseClosed = caseStatus === 'closed';
   const bannerText = caseStatus === 'needs_customer_photos'
     ? "Please upload photos to continue."
+    : caseStatus === 'closed'
+    ? "Your case is closed. You can ask general questions, or click 'New' to start a new request."
     : "Your case is under review. You’ll receive an update here.";
 
   return (
@@ -422,9 +425,13 @@ export default function CustomerChat() {
 
       {/* Input */}
       <div className="max-w-2xl mx-auto w-full">
-        {isCaseActive && (
+        {(isCaseActive || isCaseClosed) && (
           <div className="px-3 sm:px-4 pt-3">
-            <div className="rounded-md bg-muted/60 text-muted-foreground text-xs sm:text-sm px-3 py-2">
+            <div className={`rounded-md text-xs sm:text-sm px-3 py-2 ${
+              isCaseClosed 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                : 'bg-muted/60 text-muted-foreground'
+            }`}>
               {bannerText}
             </div>
           </div>
@@ -435,6 +442,7 @@ export default function CustomerChat() {
           isDisabled={isCaseActive}
           orderId={orderId}
           onOrderIdChange={setOrderId}
+          hideOrderInput={isCaseClosed}
         />
       </div>
     </div>

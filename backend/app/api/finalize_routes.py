@@ -27,7 +27,8 @@ def _parse_json(raw: str) -> dict:
 def _fallback_finalize_payload(case: Dict[str, Any]) -> Dict[str, Any]:
     decision = case.get("ai_decision_json") or {}
     human_decision = (case.get("human_decision") or "").lower()
-    notes = (case.get("human_notes") or "").lower()
+    notes = case.get("human_notes") or ""
+    notes_lower = notes.lower()
     order = case.get("order_facts_json") or {}
     items = order.get("items") or []
 
@@ -35,11 +36,33 @@ def _fallback_finalize_payload(case: Dict[str, Any]) -> Dict[str, Any]:
     sku = first_item.get("sku")
     qty = int(first_item.get("qty", 1)) if first_item else None
 
+    # Build reason text from reviewer notes
+    reason_text = ""
+    if notes.strip():
+        reason_text = f" Reason: {notes.strip()}"
+
     if human_decision == "approved":
-        action_type = "issue_refund" if "out of stock" in notes else "issue_replacement"
+        action_type = "issue_refund" if "out of stock" in notes_lower else "issue_replacement"
+        
+        # Build approval message with next steps
+        if action_type == "issue_refund":
+            next_steps = (
+                "\n\nNext steps:\n"
+                "1. Your refund will be processed within 3-5 business days.\n"
+                "2. You'll receive a confirmation email with refund details.\n"
+                "3. The refund will be credited to your original payment method."
+            )
+        else:
+            next_steps = (
+                "\n\nNext steps:\n"
+                "1. We'll ship your replacement item within 1-2 business days.\n"
+                "2. You'll receive a tracking number via email once shipped.\n"
+                "3. Please return the defective item using the prepaid label we'll send."
+            )
+        
         reply = (
-            "Thanks for your patience. We’ve approved your request and will proceed with the resolution. "
-            "You’ll receive a confirmation email shortly."
+            f"Great news! Your request has been approved.{reason_text}"
+            f"{next_steps}"
         )
         next_actions = [
             {
@@ -53,11 +76,25 @@ def _fallback_finalize_payload(case: Dict[str, Any]) -> Dict[str, Any]:
         ]
     elif human_decision == "denied":
         can_return = decision.get("resolution_type") == "return_for_refund"
-        reply = (
-            "Thanks for the details. We’re unable to approve this request as submitted. "
-            "If you’d like, we can review standard return eligibility." if can_return else
-            "Thanks for the details. We’re unable to approve this request as submitted."
-        )
+        
+        # Include reason for denial
+        if reason_text:
+            denial_reason = reason_text
+        else:
+            denial_reason = " Unfortunately, your request does not meet our policy criteria for approval."
+        
+        if can_return:
+            reply = (
+                f"We're sorry, but your warranty claim has been denied.{denial_reason}\n\n"
+                "However, you may still be eligible for a standard return. "
+                "Please visit our returns page or start a new chat to explore return options."
+            )
+        else:
+            reply = (
+                f"We're sorry, but your request has been denied.{denial_reason}\n\n"
+                "If you believe this decision was made in error or have additional information to share, "
+                "please start a new chat and we'll be happy to review your case again."
+            )
         next_actions = [
             {
                 "type": "manual_agent_followup",

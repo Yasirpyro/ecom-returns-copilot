@@ -60,6 +60,24 @@ def get_active_case_for_session(session_id: str) -> Optional[Dict[str, Any]]:
         return get_case(row["case_id"])
 
 
+def get_closed_case_for_session(session_id: str) -> Optional[Dict[str, Any]]:
+    """Get the most recent closed case for a session."""
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT case_id
+            FROM cases
+            WHERE session_id = ? AND status = 'closed'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return get_case(row["case_id"])
+
+
 def get_case(case_id: str) -> Optional[Dict[str, Any]]:
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM cases WHERE case_id = ?", (case_id,)).fetchone()
