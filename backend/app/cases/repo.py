@@ -16,15 +16,16 @@ def create_case(payload: Dict[str, Any]) -> str:
         conn.execute(
             """
             INSERT INTO cases (
-              case_id, order_id, reason, customer_message, wants_store_credit,
+                            case_id, session_id, order_id, reason, customer_message, wants_store_credit,
               photos_required, status, created_at,
               ai_decision_json, ai_audit_json, policy_citations_json, order_facts_json,
               photo_urls_json
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 case_id,
+                                payload.get("session_id"),
                 payload["order_id"],
                 payload["reason"],
                 payload.get("customer_message"),
@@ -40,6 +41,23 @@ def create_case(payload: Dict[str, Any]) -> str:
             ),
         )
     return case_id
+
+
+def get_active_case_for_session(session_id: str) -> Optional[Dict[str, Any]]:
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT case_id
+            FROM cases
+            WHERE session_id = ? AND status != 'closed'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return get_case(row["case_id"])
 
 
 def get_case(case_id: str) -> Optional[Dict[str, Any]]:

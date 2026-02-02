@@ -2,8 +2,7 @@ import { useState } from "react";
 import { CasesList } from "@/components/reviewer/CasesList";
 import { CaseDetail } from "@/components/reviewer/CaseDetail";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Shield } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,11 +42,6 @@ export default function ReviewerDashboard() {
             <p className="text-xs text-muted-foreground">Review and approve warranty claims</p>
           </div>
         </div>
-        <Link to="/">
-          <Button variant="outline" size="sm" className="gap-1">
-            <ArrowLeft className="h-3 w-3" /> Customer Chat
-          </Button>
-        </Link>
       </header>
 
       {/* Main content */}

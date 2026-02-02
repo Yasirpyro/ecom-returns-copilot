@@ -35,7 +35,7 @@ export interface ChatResponse {
   session_id: string;
   assistant_message: string;
   case_id: string | null;
-  status: 'needs_customer_photos' | 'ready_for_human_review' | 'closed' | null;
+  status: 'needs_customer_photos' | 'ready_for_human_review' | 'approved' | 'denied' | 'more_info_requested' | 'closed' | null;
 }
 
 export interface OrderItem {
@@ -80,6 +80,13 @@ export interface Case {
   final_customer_reply: string | null;
   next_actions_json: Array<{ action: string; details?: string }>;
   customer_message?: string;
+}
+
+export interface CasePublicStatus {
+  case_id: string;
+  status: string | null;
+  final_customer_reply: string | null;
+  next_actions_json: Array<{ action: string; details?: string }> | null;
 }
 
 export interface CasesListResponse {
@@ -137,6 +144,12 @@ export async function getCase(caseId: string): Promise<Case> {
     headers: { ...getReviewerAuthHeader() },
   });
   if (!response.ok) throw new Error('Failed to fetch case');
+  return response.json();
+}
+
+export async function getCasePublic(caseId: string): Promise<CasePublicStatus> {
+  const response = await fetch(`${API_BASE_URL}/cases/${caseId}/public`);
+  if (!response.ok) throw new Error('Failed to fetch case status');
   return response.json();
 }
 

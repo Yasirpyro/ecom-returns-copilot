@@ -4,7 +4,7 @@ from app.api.chat_schemas import ChatStartResponse, ChatMessageRequest, ChatMess
 from app.chat.repo import create_session, add_message, get_messages
 from app.graph.returns_graph import build_graph
 from app.tools.order_lookup import get_order, enrich_order
-from app.cases.repo import create_case
+from app.cases.repo import create_case, get_active_case_for_session
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 _graph = build_graph()
@@ -17,6 +17,21 @@ def chat_start():
 
 @router.post("/{session_id}", response_model=ChatMessageResponse)
 def chat_send(session_id: str, req: ChatMessageRequest):
+    # Guard: prevent new case creation if an active case already exists for this session
+    active_case = get_active_case_for_session(session_id)
+    if active_case:
+        status = active_case.get("status")
+        msg = (
+            "Your case is under review. You’ll receive an update here." if status != "needs_customer_photos" else
+            "Please upload the requested photos to continue."
+        )
+        add_message(session_id, "assistant", msg, case_id=active_case.get("case_id"))
+        return ChatMessageResponse(
+            session_id=session_id,
+            assistant_message=msg,
+            case_id=active_case.get("case_id"),
+            status=status,
+        )
     # Save user message
     add_message(session_id, "user", req.message)
 
@@ -73,6 +88,7 @@ def chat_send(session_id: str, req: ChatMessageRequest):
         status = "needs_customer_photos" if photos_required else "ready_for_human_review"
         case_id = create_case(
             {
+                "session_id": session_id,
                 "order_id": order_id,
                 "reason": inferred_reason,
                 "customer_message": req.message,

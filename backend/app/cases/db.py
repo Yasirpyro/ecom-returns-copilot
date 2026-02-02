@@ -21,6 +21,7 @@ def init_db() -> None:
             """
             CREATE TABLE IF NOT EXISTS cases (
               case_id TEXT PRIMARY KEY,
+              session_id TEXT,
               order_id TEXT NOT NULL,
               reason TEXT NOT NULL,
               customer_message TEXT,
@@ -48,5 +49,10 @@ def init_db() -> None:
         # Migration-safe add for existing DBs that predate next_actions_json
         try:
             conn.execute("ALTER TABLE cases ADD COLUMN next_actions_json TEXT")
+        except sqlite3.OperationalError:
+            pass
+        # Migration-safe add for session_id
+        try:
+            conn.execute("ALTER TABLE cases ADD COLUMN session_id TEXT")
         except sqlite3.OperationalError:
             pass

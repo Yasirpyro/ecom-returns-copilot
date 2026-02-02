@@ -9,16 +9,18 @@ import { Send, Loader2 } from "lucide-react";
 interface ChatInputProps {
   onSend: (message: string, orderId: string, wantsStoreCredit: boolean) => void;
   isLoading: boolean;
+  isDisabled?: boolean;
   orderId: string;
   onOrderIdChange: (orderId: string) => void;
 }
 
-export function ChatInput({ onSend, isLoading, orderId, onOrderIdChange }: ChatInputProps) {
+export function ChatInput({ onSend, isLoading, isDisabled = false, orderId, onOrderIdChange }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [wantsStoreCredit, setWantsStoreCredit] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDisabled) return;
     if (!message.trim()) return;
     onSend(message.trim(), orderId, wantsStoreCredit);
     setMessage("");
@@ -33,7 +35,7 @@ export function ChatInput({ onSend, isLoading, orderId, onOrderIdChange }: ChatI
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Describe your return or warranty issue..."
             className="min-h-[50px] sm:min-h-[60px] resize-none text-sm sm:text-base"
-            disabled={isLoading}
+            disabled={isLoading || isDisabled}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -42,7 +44,7 @@ export function ChatInput({ onSend, isLoading, orderId, onOrderIdChange }: ChatI
             }}
           />
         </div>
-        <Button type="submit" disabled={isLoading || !message.trim()} size="sm" className="h-auto px-3 sm:hidden">
+        <Button type="submit" disabled={isLoading || isDisabled || !message.trim()} size="sm" className="h-auto px-3 sm:hidden">
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -63,7 +65,7 @@ export function ChatInput({ onSend, isLoading, orderId, onOrderIdChange }: ChatI
               onChange={(e) => onOrderIdChange(e.target.value)}
               placeholder="ORD-10003"
               className="w-24 sm:w-32 h-8 text-xs sm:text-sm"
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
             />
           </div>
           
@@ -72,7 +74,7 @@ export function ChatInput({ onSend, isLoading, orderId, onOrderIdChange }: ChatI
               id="store-credit"
               checked={wantsStoreCredit}
               onCheckedChange={setWantsStoreCredit}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
             />
             <Label htmlFor="store-credit" className="text-xs sm:text-sm text-muted-foreground cursor-pointer">
               Store credit
@@ -80,7 +82,7 @@ export function ChatInput({ onSend, isLoading, orderId, onOrderIdChange }: ChatI
           </div>
         </div>
         
-        <Button type="submit" disabled={isLoading || !message.trim()} size="sm" className="hidden sm:flex">
+        <Button type="submit" disabled={isLoading || isDisabled || !message.trim()} size="sm" className="hidden sm:flex">
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (

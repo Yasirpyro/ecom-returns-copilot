@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useTypingAnimation } from "@/hooks/useTypingAnimation";
-import { startChat, sendMessage, ChatResponse } from "@/lib/api";
+import { startChat, sendMessage, ChatResponse, getCasePublic, CasePublicStatus } from "@/lib/api";
 import { ChatBubble } from "@/components/chat/ChatBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { PhotoUpload } from "@/components/chat/PhotoUpload";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 interface Message {
   id: string;
@@ -19,6 +19,7 @@ interface Message {
 }
 
 const SESSION_KEY = 'copilot_session_id';
+const getActiveCaseKey = (sessionId: string) => `activeCaseId:${sessionId}`;
 
 function WelcomeText() {
   const { displayedText, isComplete } = useTypingAnimation("Hey, I'm EcomBot", 70, 300);
@@ -55,6 +56,8 @@ export default function CustomerChat() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [caseId, setCaseId] = useState<string | null>(null);
   const [caseStatus, setCaseStatus] = useState<string | null>(null);
+  const [pendingStatusText, setPendingStatusText] = useState("Working on it...");
+  const [finalMessageAppended, setFinalMessageAppended] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Initialize session
@@ -65,6 +68,10 @@ export default function CustomerChat() {
       if (existingSessionId) {
         setSessionId(existingSessionId);
         setIsInitializing(false);
+        const storedCaseId = localStorage.getItem(getActiveCaseKey(existingSessionId));
+        if (storedCaseId) {
+          setCaseId(storedCaseId);
+        }
         // Add welcome back message
         setMessages([{
           id: 'welcome',
@@ -105,8 +112,77 @@ export default function CustomerChat() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    setFinalMessageAppended(false);
+  }, [caseId]);
+
+  // Pending status text when sending
+  useEffect(() => {
+    if (!isLoading) return;
+    setPendingStatusText("Working on it...");
+    const timer = setTimeout(() => {
+      setPendingStatusText("Still working—thanks for your patience.");
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
+  const { data: caseStatusData } = useQuery<CasePublicStatus>({
+    queryKey: ["case-status", sessionId, caseId],
+    queryFn: () => getCasePublic(caseId as string),
+    enabled: !!caseId,
+    refetchInterval: (query) => {
+      const data = query.state.data as CasePublicStatus | undefined;
+      if (!data) return 3000;
+      if (data.status === "closed" || data.final_customer_reply) return false;
+      return 3000;
+    },
+  });
+
+  useEffect(() => {
+    if (!caseStatusData) return;
+
+    if (caseStatusData.status) {
+      setCaseStatus(caseStatusData.status);
+    }
+
+    if (caseStatusData.final_customer_reply && !finalMessageAppended) {
+      const finalMessage: Message = {
+        id: `final-${Date.now()}`,
+        content: caseStatusData.final_customer_reply,
+        isUser: false,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && !last.isUser && last.content === finalMessage.content) {
+          return prev;
+        }
+        return [...prev, finalMessage];
+      });
+
+      setFinalMessageAppended(true);
+      if (sessionId) {
+        localStorage.removeItem(getActiveCaseKey(sessionId));
+      }
+      setCaseId(null);
+      setCaseStatus("closed");
+      return;
+    }
+
+    if (caseStatusData.status === "closed" && !caseStatusData.final_customer_reply) {
+      if (sessionId) {
+        localStorage.removeItem(getActiveCaseKey(sessionId));
+      }
+      setCaseId(null);
+      setCaseStatus("closed");
+    }
+  }, [caseStatusData, finalMessageAppended, sessionId]);
+
   const handleSend = async (message: string, orderIdValue: string, wantsStoreCredit: boolean) => {
     if (!sessionId) return;
+    const hasActiveCase = !!caseId && caseStatus !== 'closed';
+    if (hasActiveCase) return;
 
     // Add user message
     const userMessage: Message = {
@@ -137,14 +213,15 @@ export default function CustomerChat() {
       // Update case info
       if (response.case_id) {
         setCaseId(response.case_id);
+        localStorage.setItem(getActiveCaseKey(sessionId), response.case_id);
+        setFinalMessageAppended(false);
       }
       if (response.status) {
         setCaseStatus(response.status);
       }
     } catch (error) {
       toast({
-        title: "Failed to send message",
-        description: "Please try again",
+        title: "We couldn’t generate a response. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -159,9 +236,13 @@ export default function CustomerChat() {
 
   const startNewSession = async () => {
     localStorage.removeItem(SESSION_KEY);
+    if (sessionId) {
+      localStorage.removeItem(getActiveCaseKey(sessionId));
+    }
     setMessages([]);
     setCaseId(null);
     setCaseStatus(null);
+    setFinalMessageAppended(false);
     setIsInitializing(true);
     
     try {
@@ -194,6 +275,11 @@ export default function CustomerChat() {
       </div>
     );
   }
+
+  const isCaseActive = !!caseId && caseStatus !== 'closed';
+  const bannerText = caseStatus === 'needs_customer_photos'
+    ? "Please upload photos to continue."
+    : "Your case is under review. You’ll receive an update here.";
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -271,7 +357,7 @@ export default function CustomerChat() {
               <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Typing...</span>
+                  <span className="text-sm text-muted-foreground">{pendingStatusText}</span>
                 </div>
               </div>
             </div>
@@ -310,9 +396,17 @@ export default function CustomerChat() {
 
       {/* Input */}
       <div className="max-w-2xl mx-auto w-full">
+        {isCaseActive && (
+          <div className="px-3 sm:px-4 pt-3">
+            <div className="rounded-md bg-muted/60 text-muted-foreground text-xs sm:text-sm px-3 py-2">
+              {bannerText}
+            </div>
+          </div>
+        )}
         <ChatInput
           onSend={handleSend}
           isLoading={isLoading}
+          isDisabled={isCaseActive}
           orderId={orderId}
           onOrderIdChange={setOrderId}
         />

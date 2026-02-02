@@ -47,6 +47,19 @@ def case_detail(case_id: str):
     return case
 
 
+@router.get("/{case_id}/public")
+def case_detail_public(case_id: str):
+    case = get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return {
+        "case_id": case.get("case_id"),
+        "status": case.get("status"),
+        "final_customer_reply": case.get("final_customer_reply"),
+        "next_actions_json": case.get("next_actions_json"),
+    }
+
+
 @router.post("/{case_id}/photos")
 async def upload_photo(case_id: str, file: UploadFile = File(...)):
     case = get_case(case_id)
