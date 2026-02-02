@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from app.api.chat_schemas import ChatStartResponse, ChatMessageRequest, ChatMessageResponse
 from app.chat.repo import create_session, add_message, get_messages
 from app.graph.returns_graph import build_graph
-from app.tools.order_lookup import get_order, enrich_order
+from app.tools.order_lookup import get_order, enrich_order, normalize_order_id
 from app.cases.repo import create_case, get_active_case_for_session
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -36,11 +36,14 @@ def chat_send(session_id: str, req: ChatMessageRequest):
     add_message(session_id, "user", req.message)
 
     # Require order id for now (simple production-grade constraint)
-    order_id = req.order_id
-    if not order_id:
+    raw_order_id = req.order_id
+    if not raw_order_id:
         msg = "Please provide your order ID so I can check eligibility and next steps."
         add_message(session_id, "assistant", msg)
         return ChatMessageResponse(session_id=session_id, assistant_message=msg)
+
+    # Normalize order ID to ORD-xxxxx format
+    order_id = normalize_order_id(raw_order_id)
 
     order = get_order(order_id)
     if not order:

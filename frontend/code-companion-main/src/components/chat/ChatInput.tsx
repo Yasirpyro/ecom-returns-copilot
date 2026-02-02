@@ -14,6 +14,16 @@ interface ChatInputProps {
   onOrderIdChange: (orderId: string) => void;
 }
 
+// Normalize order ID to ORD-xxxxx format on blur
+function normalizeOrderId(orderId: string): string {
+  const raw = (orderId || "").trim().toUpperCase().replace(/\s/g, "");
+  if (!raw) return orderId;
+  if (raw.startsWith("ORD-")) return raw;
+  if (raw.startsWith("ORD") && /^\d+$/.test(raw.slice(3))) return `ORD-${raw.slice(3)}`;
+  if (/^\d+$/.test(raw)) return `ORD-${raw}`;
+  return orderId;
+}
+
 export function ChatInput({ onSend, isLoading, isDisabled = false, orderId, onOrderIdChange }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [wantsStoreCredit, setWantsStoreCredit] = useState(false);
@@ -63,6 +73,12 @@ export function ChatInput({ onSend, isLoading, isDisabled = false, orderId, onOr
               id="order-id"
               value={orderId}
               onChange={(e) => onOrderIdChange(e.target.value)}
+              onBlur={(e) => {
+                const normalized = normalizeOrderId(e.target.value);
+                if (normalized !== e.target.value) {
+                  onOrderIdChange(normalized);
+                }
+              }}
               placeholder="ORD-10003"
               className="w-24 sm:w-32 h-8 text-xs sm:text-sm"
               disabled={isLoading || isDisabled}

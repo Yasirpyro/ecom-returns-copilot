@@ -20,6 +20,17 @@ interface Message {
 
 const SESSION_KEY = 'copilot_session_id';
 const getActiveCaseKey = (sessionId: string) => `activeCaseId:${sessionId}`;
+const getFinalAppendedKey = (sessionId: string) => `finalAppended:${sessionId}`;
+
+// Normalize order ID to ORD-xxxxx format
+function normalizeOrderId(orderId: string): string {
+  const raw = (orderId || "").trim().toUpperCase().replace(/\s/g, "");
+  if (!raw) return orderId;
+  if (raw.startsWith("ORD-")) return raw;
+  if (raw.startsWith("ORD") && /^\d+$/.test(raw.slice(3))) return `ORD-${raw.slice(3)}`;
+  if (/^\d+$/.test(raw)) return `ORD-${raw}`;
+  return orderId;
+}
 
 function WelcomeText() {
   const { displayedText, isComplete } = useTypingAnimation("Hey, I'm EcomBot", 70, 300);
@@ -58,6 +69,7 @@ export default function CustomerChat() {
   const [caseStatus, setCaseStatus] = useState<string | null>(null);
   const [pendingStatusText, setPendingStatusText] = useState("Working on it...");
   const [finalMessageAppended, setFinalMessageAppended] = useState(false);
+  const appendedContentRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Initialize session
@@ -146,20 +158,30 @@ export default function CustomerChat() {
     }
 
     if (caseStatusData.final_customer_reply && !finalMessageAppended) {
+      const content = caseStatusData.final_customer_reply;
+      
+      // Strong deduplication: check if this content was already appended
+      if (appendedContentRef.current.has(content)) {
+        return;
+      }
+
       const finalMessage: Message = {
-        id: `final-${Date.now()}`,
-        content: caseStatusData.final_customer_reply,
+        id: `final-${caseId}-${Date.now()}`,
+        content,
         isUser: false,
         timestamp: new Date(),
       };
 
       setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && !last.isUser && last.content === finalMessage.content) {
+        // Additional check: ensure we don't duplicate by content
+        const alreadyExists = prev.some(m => !m.isUser && m.content === content);
+        if (alreadyExists) {
           return prev;
         }
         return [...prev, finalMessage];
       });
+
+      appendedContentRef.current.add(content);
 
       setFinalMessageAppended(true);
       if (sessionId) {
@@ -184,6 +206,9 @@ export default function CustomerChat() {
     const hasActiveCase = !!caseId && caseStatus !== 'closed';
     if (hasActiveCase) return;
 
+    // Normalize order ID before sending
+    const normalizedOrderId = orderIdValue ? normalizeOrderId(orderIdValue) : undefined;
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -197,7 +222,7 @@ export default function CustomerChat() {
     try {
       const response: ChatResponse = await sendMessage(sessionId, {
         message,
-        order_id: orderIdValue || undefined,
+        order_id: normalizedOrderId,
         wants_store_credit: wantsStoreCredit,
       });
 
@@ -243,6 +268,7 @@ export default function CustomerChat() {
     setCaseId(null);
     setCaseStatus(null);
     setFinalMessageAppended(false);
+    appendedContentRef.current.clear();
     setIsInitializing(true);
     
     try {

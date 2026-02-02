@@ -13,7 +13,8 @@ def _load_json(path: Path) -> Any:
         return json.load(f)
 
 
-def _normalize_order_id(order_id: str) -> str:
+def normalize_order_id(order_id: str) -> str:
+    """Normalize order ID to ORD-xxxxx format."""
     raw = (order_id or "").strip()
     if not raw:
         return raw
@@ -29,7 +30,7 @@ def _normalize_order_id(order_id: str) -> str:
 
 def get_order(order_id: str) -> Optional[Dict[str, Any]]:
     orders = _load_json(ORDERS_PATH)
-    normalized = _normalize_order_id(order_id)
+    normalized = normalize_order_id(order_id)
     for o in orders:
         if o.get("order_id") == normalized:
             return o
