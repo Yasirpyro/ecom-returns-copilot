@@ -22,70 +22,73 @@ def _answer_general_query(query: str) -> str:
     except Exception:
         docs = []
     
-    if not docs:
-        return (
-            "I apologize, but I'm unable to assist with that particular query. "
-            "For further assistance, please start a new chat or contact our customer support team."
-        )
-    
     # Check if query is relevant to our policies (returns, warranty, refunds, shipping)
     query_lower = query.lower()
     policy_keywords = [
         "return", "refund", "exchange", "warranty", "shipping", "delivery",
-        "replacement", "defect", "damaged", "lost", "policy", "credit",
-        "cancel", "order", "product", "item"
+        "replacement", "defect", "damaged", "lost", "policy", "policies",
+        "credit", "cancel", "order", "product", "item", "money back",
+        "how long", "how do", "what is", "what are", "can i", "do you"
     ]
     
     is_relevant = any(keyword in query_lower for keyword in policy_keywords)
     
-    if not is_relevant:
+    if not is_relevant and not docs:
         return (
             "I apologize, but that question is outside the scope of what I can help with. "
             "I'm here to assist with returns, warranties, refunds, and shipping inquiries. "
-            "For other questions, please contact our customer support team or start a new chat."
+            "For other questions, please contact our customer support team."
         )
-    
-    # Build a simple response from policy content
-    policy_content = "\n".join([doc.page_content[:500] for doc in docs[:2]])
     
     # Return a summary based on the query type
     if "return" in query_lower or "exchange" in query_lower:
         return (
-            "Based on our return policy:\n"
-            "• Items can be returned within 30 days of delivery for most products.\n"
-            "• Items must be in original condition with tags attached.\n"
-            "• Final sale items cannot be returned.\n\n"
-            "If you have a specific return request, please start a new chat and provide your order ID."
+            "Here's our **Return Policy**:\n\n"
+            "✅ **30-Day Return Window** - Most items can be returned within 30 days of delivery.\n"
+            "✅ **Original Condition** - Items must have tags attached and be unworn/unused.\n"
+            "✅ **Free Returns** - We provide prepaid return labels for eligible items.\n"
+            "❌ **Final Sale** - Items marked 'Final Sale' cannot be returned.\n"
+            "❌ **Personalized Items** - Custom/personalized items are non-returnable.\n\n"
+            "Would you like to start a return? Please provide your **Order ID** and I'll check eligibility."
         )
-    elif "warranty" in query_lower or "defect" in query_lower:
+    elif "warranty" in query_lower or "defect" in query_lower or "quality" in query_lower:
         return (
-            "Based on our warranty policy:\n"
-            "• Apparel items have a 90-day warranty against manufacturing defects.\n"
-            "• Footwear and accessories have a 180-day warranty.\n"
-            "• Photo evidence is required for warranty claims.\n\n"
-            "If you'd like to file a warranty claim, please start a new chat with your order ID."
+            "Here's our **Warranty Policy**:\n\n"
+            "🛡️ **Apparel** - 90-day warranty against manufacturing defects.\n"
+            "🛡️ **Footwear & Accessories** - 180-day warranty against defects.\n"
+            "📸 **Photo Required** - Clear photos of the defect are needed for claims.\n"
+            "✅ **Coverage** - Includes stitching issues, hardware failures, fabric defects.\n"
+            "❌ **Not Covered** - Normal wear and tear, misuse, or accidental damage.\n\n"
+            "To file a warranty claim, please provide your **Order ID** and describe the issue."
         )
-    elif "refund" in query_lower or "credit" in query_lower:
+    elif "refund" in query_lower or "credit" in query_lower or "money" in query_lower:
         return (
-            "Based on our refund policy:\n"
-            "• Refunds are processed within 3-5 business days after approval.\n"
-            "• Refunds are credited to your original payment method.\n"
-            "• Store credit may be offered as an alternative.\n\n"
-            "For a specific refund inquiry, please start a new chat with your order details."
+            "Here's our **Refund Policy**:\n\n"
+            "⏱️ **Processing Time** - Refunds are processed within 3-5 business days after approval.\n"
+            "💳 **Payment Method** - Refunds go back to your original payment method.\n"
+            "🎁 **Store Credit** - You can opt for store credit (often processed faster).\n"
+            "📦 **Shipping Costs** - Original shipping fees are non-refundable unless we made an error.\n"
+            "🔄 **Exchanges** - We can exchange for a different size/color if available.\n\n"
+            "For a specific refund inquiry, please provide your **Order ID**."
         )
-    elif "shipping" in query_lower or "delivery" in query_lower:
+    elif "shipping" in query_lower or "delivery" in query_lower or "lost" in query_lower or "track" in query_lower:
         return (
-            "Based on our shipping policy:\n"
-            "• Standard shipping typically takes 5-7 business days.\n"
-            "• Express shipping is available for faster delivery.\n"
-            "• Lost packages are investigated after 10 business days.\n\n"
-            "For a specific shipping issue, please start a new chat with your order ID."
+            "Here's our **Shipping Policy**:\n\n"
+            "📦 **Standard Shipping** - 5-7 business days.\n"
+            "🚀 **Express Shipping** - 2-3 business days.\n"
+            "✈️ **Overnight** - Next business day delivery.\n"
+            "📍 **Tracking** - You'll receive tracking info via email once shipped.\n"
+            "❓ **Lost Packages** - If not delivered within 10 business days, we'll investigate.\n\n"
+            "Having a shipping issue? Please provide your **Order ID** and I'll look into it."
         )
     else:
         return (
-            "I can help answer general questions about our policies. "
-            "For specific requests or to file a claim, please start a new chat and provide your order ID. "
-            "Our team will be happy to assist you with your inquiry."
+            "I can help you with questions about:\n\n"
+            "• **Returns** - 30-day return window for most items\n"
+            "• **Warranties** - 90-180 day coverage for defects\n"
+            "• **Refunds** - 3-5 business days processing\n"
+            "• **Shipping** - Tracking and delivery issues\n\n"
+            "What would you like to know more about? Or provide your **Order ID** to file a specific request."
         )
 
 
@@ -146,12 +149,52 @@ def chat_send(session_id: str, req: ChatMessageRequest):
     # Save user message
     add_message(session_id, "user", req.message)
 
-    # Require order id for now (simple production-grade constraint)
+    # Check if this is a general policy question (no order ID provided)
     raw_order_id = req.order_id
     if not raw_order_id:
-        msg = "Please provide your order ID so I can check eligibility and next steps."
-        add_message(session_id, "assistant", msg)
-        return ChatMessageResponse(session_id=session_id, assistant_message=msg)
+        # Check if user is asking a general policy question
+        query_lower = req.message.lower()
+        policy_keywords = [
+            "return", "refund", "exchange", "warranty", "shipping", "delivery",
+            "replacement", "defect", "damaged", "lost", "policy", "policies",
+            "credit", "cancel", "how long", "how do", "what is", "what are",
+            "can i", "do you", "is there"
+        ]
+        
+        is_policy_question = any(keyword in query_lower for keyword in policy_keywords)
+        
+        if is_policy_question:
+            # Answer the general policy question using RAG
+            answer = _answer_general_query(req.message)
+            add_message(session_id, "assistant", answer)
+            return ChatMessageResponse(session_id=session_id, assistant_message=answer)
+        else:
+            # Check if it's a greeting or irrelevant query
+            greeting_keywords = ["hi", "hello", "hey", "wsup", "sup", "what's up", "howdy", "good morning", "good afternoon", "good evening"]
+            is_greeting = any(keyword in query_lower for keyword in greeting_keywords)
+            
+            if is_greeting and len(req.message.split()) < 10:
+                # It's just a greeting, respond friendly and ask how to help
+                msg = (
+                    "Hello! 👋 I'm your Returns & Warranty Assistant. I can help you with:\n\n"
+                    "• **Returns & Exchanges** - Items within 30 days of delivery\n"
+                    "• **Warranty Claims** - Manufacturing defects\n"
+                    "• **Refunds** - Processing and status\n"
+                    "• **Shipping Issues** - Lost or delayed packages\n\n"
+                    "How can I assist you today? If you have a specific order, please provide your Order ID."
+                )
+                add_message(session_id, "assistant", msg)
+                return ChatMessageResponse(session_id=session_id, assistant_message=msg)
+            else:
+                # Not a policy question - formal fallback
+                msg = (
+                    "I apologize, but I'm not sure how to help with that. "
+                    "I specialize in returns, warranties, refunds, and shipping inquiries.\n\n"
+                    "If you have a question about our policies, feel free to ask! "
+                    "Or if you'd like to file a claim, please provide your Order ID."
+                )
+                add_message(session_id, "assistant", msg)
+                return ChatMessageResponse(session_id=session_id, assistant_message=msg)
 
     # Normalize order ID to ORD-xxxxx format
     order_id = normalize_order_id(raw_order_id)
