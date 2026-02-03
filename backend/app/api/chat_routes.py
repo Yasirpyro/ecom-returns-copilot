@@ -14,32 +14,41 @@ _graph = build_graph()
 
 def _is_status_inquiry(message: str) -> bool:
     """
-    Check if the message is asking about order status/tracking (not an issue).
+    Check if the message is asking about order status/tracking/delivery.
+    This includes non-receipt claims - all delivery-related queries get direct responses.
     These should NOT create a case for human review.
     """
     msg_lower = message.lower()
     
-    # Keywords that indicate a status/tracking inquiry
+    # Keywords that indicate a status/tracking/delivery inquiry
     status_keywords = [
         "status", "track", "tracking", "where is", "where's", "when will",
         "when does", "when is", "delivery date", "estimated", "eta",
         "shipped", "shipping status", "check status", "order status",
         "has it shipped", "has my order", "when can i expect",
-        "how long", "arriving", "arrive", "delivery status"
+        "how long", "arriving", "arrive", "delivery status",
+        "check the status", "delivery update", "shipping update",
+        "isn't delivered", "isnt delivered", "not delivered yet",
+        "hasn't arrived yet", "hasnt arrived yet", "hasn't shipped",
+        "when will it arrive", "when does it arrive", "expected delivery",
+        # Non-receipt / delivery claim keywords - respond with status, don't create case
+        "didn't receive", "did not receive", "haven't received", "not received",
+        "never received", "didn't get", "did not get", "haven't got", "never got",
+        "wasn't delivered", "never arrived", "didn't arrive",
+        "never came", "didn't come", "still waiting",
+        "hasn't arrived", "has not arrived", "haven't gotten", "didn't show",
+        "package is missing", "order is missing", "where is my package",
+        "i never got", "lost", "missing"
     ]
     
-    # Keywords that indicate an actual ISSUE requiring case creation
+    # Keywords that indicate an actual ISSUE requiring case creation (product problems)
     issue_keywords = [
-        "damage", "damaged", "broken", "defect", "defective", "wrong",
-        "missing", "lost", "never arrived", "didn't receive", "not received",
-        "haven't received", "did not receive", "never received", "didn't get",
-        "did not get", "never got", "haven't got", "not delivered",
-        "wasn't delivered", "not here", "never came", "didn't come",
+        "damage", "damaged", "broken", "defect", "defective", "wrong item",
         "quality", "ripped", "torn", "stain", "fading", "pilling",
         "zipper", "seam", "fell apart", "doesn't work", "malfunction",
         "return", "refund", "exchange", "warranty", "claim", "complaint",
         "doesn't fit", "too small", "too big", "wrong size", "wrong color",
-        "wrong item", "not what i ordered"
+        "not what i ordered", "received wrong"
     ]
     
     has_status_keyword = any(kw in msg_lower for kw in status_keywords)
@@ -47,30 +56,6 @@ def _is_status_inquiry(message: str) -> bool:
     
     # It's a status inquiry if it has status keywords but NO issue keywords
     return has_status_keyword and not has_issue_keyword
-
-
-def _is_non_receipt_claim(message: str, order: dict) -> bool:
-    """
-    Check if the user is claiming non-receipt of a delivered order.
-    This is a special case that MUST create a case for investigation.
-    """
-    tracking_status = order.get("tracking_status", "")
-    if tracking_status != "delivered":
-        return False
-    
-    msg_lower = message.lower()
-    
-    # Patterns indicating non-receipt claim
-    non_receipt_patterns = [
-        "didn't receive", "did not receive", "haven't received", "not received",
-        "never received", "didn't get", "did not get", "haven't got", "never got",
-        "not delivered", "wasn't delivered", "never arrived", "didn't arrive",
-        "not here", "never came", "didn't come", "where is it", "still waiting",
-        "hasn't arrived", "has not arrived", "haven't gotten", "didn't show",
-        "not showing", "can't find", "cannot find", "don't have", "do not have"
-    ]
-    
-    return any(pattern in msg_lower for pattern in non_receipt_patterns)
 
 
 def _format_order_status_response(order: dict, message: str) -> str:
@@ -349,61 +334,7 @@ def chat_send(session_id: str, req: ChatMessageRequest):
 
     order = enrich_order(order)
 
-    # Check if user is claiming non-receipt of a "delivered" order - this needs a case
-    if _is_non_receipt_claim(req.message, order):
-        # Force this to go through case creation with "Shipping issue" reason
-        inferred_reason = "Non-receipt claim"
-        state = {
-            "order_id": order_id,
-            "reason": inferred_reason,
-            "customer_message": req.message,
-            "wants_store_credit": req.wants_store_credit,
-            "photos_provided": req.photos_provided,
-            "order": order,
-            "errors": [],
-        }
-        
-        out = _graph.invoke(state)
-        assistant_message = (
-            f"I understand you haven't received order **{order_id}** even though it shows as delivered. "
-            "I'm sorry for the inconvenience.\n\n"
-            "I've escalated this to our team for investigation. They will:\n"
-            "• Check with the carrier for delivery confirmation\n"
-            "• Review any delivery photos or GPS data\n"
-            "• Get back to you within 1-2 business days\n\n"
-            "Thank you for your patience!"
-        )
-        
-        decision = out.get("decision") or {}
-        escalate = True  # Force escalation for non-receipt claims
-        status = "ready_for_human_review"
-        
-        case_id = create_case(
-            {
-                "session_id": session_id,
-                "order_id": order_id,
-                "reason": inferred_reason,
-                "customer_message": req.message,
-                "wants_store_credit": req.wants_store_credit,
-                "photos_required": False,
-                "status": status,
-                "ai_decision": {"action": "escalate", "reason": "Customer claims non-receipt of delivered order"},
-                "ai_audit": out.get("audit") or {},
-                "policy_citations": [],
-                "order_facts": order,
-                "photo_urls": [],
-            }
-        )
-        
-        add_message(session_id, "assistant", assistant_message, case_id=case_id)
-        return ChatMessageResponse(
-            session_id=session_id,
-            assistant_message=assistant_message,
-            case_id=case_id,
-            status=status,
-        )
-
-    # Check if this is just a status inquiry (not an issue requiring case creation)
+    # Check if this is a status/delivery inquiry (not an issue requiring case creation)
     if _is_status_inquiry(req.message):
         status_response = _format_order_status_response(order, req.message)
         add_message(session_id, "assistant", status_response)
