@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from datetime import datetime
 
 from app.api.chat_schemas import ChatStartResponse, ChatMessageRequest, ChatMessageResponse
 from app.chat.repo import create_session, add_message, get_messages
@@ -9,6 +10,147 @@ from app.rag.retriever import retrieve_policy_chunks_strict
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 _graph = build_graph()
+
+
+def _is_status_inquiry(message: str) -> bool:
+    """
+    Check if the message is asking about order status/tracking (not an issue).
+    These should NOT create a case for human review.
+    """
+    msg_lower = message.lower()
+    
+    # Keywords that indicate a status/tracking inquiry
+    status_keywords = [
+        "status", "track", "tracking", "where is", "where's", "when will",
+        "when does", "when is", "delivery date", "estimated", "eta",
+        "shipped", "shipping status", "check status", "order status",
+        "has it shipped", "has my order", "when can i expect",
+        "how long", "arriving", "arrive", "delivery status"
+    ]
+    
+    # Keywords that indicate an actual ISSUE requiring case creation
+    issue_keywords = [
+        "damage", "damaged", "broken", "defect", "defective", "wrong",
+        "missing", "lost", "never arrived", "didn't receive", "not received",
+        "haven't received", "did not receive", "never received", "didn't get",
+        "did not get", "never got", "haven't got", "not delivered",
+        "wasn't delivered", "not here", "never came", "didn't come",
+        "quality", "ripped", "torn", "stain", "fading", "pilling",
+        "zipper", "seam", "fell apart", "doesn't work", "malfunction",
+        "return", "refund", "exchange", "warranty", "claim", "complaint",
+        "doesn't fit", "too small", "too big", "wrong size", "wrong color",
+        "wrong item", "not what i ordered"
+    ]
+    
+    has_status_keyword = any(kw in msg_lower for kw in status_keywords)
+    has_issue_keyword = any(kw in msg_lower for kw in issue_keywords)
+    
+    # It's a status inquiry if it has status keywords but NO issue keywords
+    return has_status_keyword and not has_issue_keyword
+
+
+def _is_non_receipt_claim(message: str, order: dict) -> bool:
+    """
+    Check if the user is claiming non-receipt of a delivered order.
+    This is a special case that MUST create a case for investigation.
+    """
+    tracking_status = order.get("tracking_status", "")
+    if tracking_status != "delivered":
+        return False
+    
+    msg_lower = message.lower()
+    
+    # Patterns indicating non-receipt claim
+    non_receipt_patterns = [
+        "didn't receive", "did not receive", "haven't received", "not received",
+        "never received", "didn't get", "did not get", "haven't got", "never got",
+        "not delivered", "wasn't delivered", "never arrived", "didn't arrive",
+        "not here", "never came", "didn't come", "where is it", "still waiting",
+        "hasn't arrived", "has not arrived", "haven't gotten", "didn't show",
+        "not showing", "can't find", "cannot find", "don't have", "do not have"
+    ]
+    
+    return any(pattern in msg_lower for pattern in non_receipt_patterns)
+
+
+def _format_order_status_response(order: dict, message: str) -> str:
+    """
+    Generate a helpful response for order status inquiries directly from order data.
+    No case is created - this is informational only.
+    """
+    order_id = order.get("order_id", "Unknown")
+    tracking_status = order.get("tracking_status", "unknown")
+    delivered_at = order.get("delivered_at")
+    tracking_last_scan = order.get("tracking_last_scan_at")
+    shipping_method = order.get("shipping_method", "standard")
+    placed_at = order.get("placed_at")
+    
+    # Format dates nicely
+    def format_date(date_str):
+        if not date_str:
+            return None
+        try:
+            dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+            return dt.strftime("%B %d, %Y at %I:%M %p")
+        except:
+            return date_str
+    
+    status_emoji = {
+        "delivered": "✅",
+        "in_transit": "🚚",
+        "label_created": "📦",
+        "out_for_delivery": "🏃",
+        "unknown": "❓"
+    }
+    
+    emoji = status_emoji.get(tracking_status, "📦")
+    
+    if tracking_status == "delivered":
+        delivered_date = format_date(delivered_at) or "recently"
+        return (
+            f"Hi, thanks for reaching out about order **{order_id}**.\n\n"
+            f"{emoji} **Status: Delivered**\n\n"
+            f"Great news! Your order was delivered on **{delivered_date}**.\n\n"
+            "If you haven't received it or there's an issue with your items, "
+            "please let me know and I'll be happy to help!"
+        )
+    
+    elif tracking_status == "in_transit":
+        last_scan = format_date(tracking_last_scan) or "recently"
+        shipping_times = {
+            "standard": "5-7 business days",
+            "express": "2-3 business days",
+            "overnight": "1 business day"
+        }
+        expected = shipping_times.get(shipping_method, "5-7 business days")
+        return (
+            f"Hi, thanks for reaching out about order **{order_id}**.\n\n"
+            f"{emoji} **Status: In Transit**\n\n"
+            f"Your order is on its way! Last scan: **{last_scan}**\n"
+            f"Shipping method: **{shipping_method.title()}** (typically {expected})\n\n"
+            "Please check the tracking link in your order confirmation email for real-time updates.\n\n"
+            "If your package doesn't arrive within the expected timeframe, let me know and I'll investigate."
+        )
+    
+    elif tracking_status == "label_created":
+        placed_date = format_date(placed_at) or "recently"
+        return (
+            f"Hi, thanks for reaching out about order **{order_id}**.\n\n"
+            f"{emoji} **Status: Label Created**\n\n"
+            f"Your order was placed on **{placed_date}** and is being prepared for shipment.\n"
+            "The shipping label has been created, and your package should be picked up soon.\n\n"
+            "You'll receive tracking updates via email once the carrier scans your package.\n\n"
+            "If you don't see movement within 2-3 business days, please reach out and I'll look into it."
+        )
+    
+    else:
+        return (
+            f"Hi, thanks for reaching out about order **{order_id}**.\n\n"
+            f"📦 **Status: Processing**\n\n"
+            "Your order is currently being processed. You'll receive tracking information "
+            "via email once it ships.\n\n"
+            "If you have any concerns, please let me know!"
+        )
 
 
 def _answer_general_query(query: str) -> str:
@@ -206,6 +348,66 @@ def chat_send(session_id: str, req: ChatMessageRequest):
         return ChatMessageResponse(session_id=session_id, assistant_message=msg)
 
     order = enrich_order(order)
+
+    # Check if user is claiming non-receipt of a "delivered" order - this needs a case
+    if _is_non_receipt_claim(req.message, order):
+        # Force this to go through case creation with "Shipping issue" reason
+        inferred_reason = "Non-receipt claim"
+        state = {
+            "order_id": order_id,
+            "reason": inferred_reason,
+            "customer_message": req.message,
+            "wants_store_credit": req.wants_store_credit,
+            "photos_provided": req.photos_provided,
+            "order": order,
+            "errors": [],
+        }
+        
+        out = _graph.invoke(state)
+        assistant_message = (
+            f"I understand you haven't received order **{order_id}** even though it shows as delivered. "
+            "I'm sorry for the inconvenience.\n\n"
+            "I've escalated this to our team for investigation. They will:\n"
+            "• Check with the carrier for delivery confirmation\n"
+            "• Review any delivery photos or GPS data\n"
+            "• Get back to you within 1-2 business days\n\n"
+            "Thank you for your patience!"
+        )
+        
+        decision = out.get("decision") or {}
+        escalate = True  # Force escalation for non-receipt claims
+        status = "ready_for_human_review"
+        
+        case_id = create_case(
+            {
+                "session_id": session_id,
+                "order_id": order_id,
+                "reason": inferred_reason,
+                "customer_message": req.message,
+                "wants_store_credit": req.wants_store_credit,
+                "photos_required": False,
+                "status": status,
+                "ai_decision": {"action": "escalate", "reason": "Customer claims non-receipt of delivered order"},
+                "ai_audit": out.get("audit") or {},
+                "policy_citations": [],
+                "order_facts": order,
+                "photo_urls": [],
+            }
+        )
+        
+        add_message(session_id, "assistant", assistant_message, case_id=case_id)
+        return ChatMessageResponse(
+            session_id=session_id,
+            assistant_message=assistant_message,
+            case_id=case_id,
+            status=status,
+        )
+
+    # Check if this is just a status inquiry (not an issue requiring case creation)
+    if _is_status_inquiry(req.message):
+        status_response = _format_order_status_response(order, req.message)
+        add_message(session_id, "assistant", status_response)
+        return ChatMessageResponse(session_id=session_id, assistant_message=status_response)
 
     # If reason not provided, we do a lightweight inference (keywords)
     inferred_reason = (req.reason or "").strip()
