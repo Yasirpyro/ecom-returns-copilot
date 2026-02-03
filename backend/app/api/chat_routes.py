@@ -58,6 +58,47 @@ def _is_status_inquiry(message: str) -> bool:
     return has_status_keyword and not has_issue_keyword
 
 
+def _needs_issue_details(message: str) -> bool:
+    """
+    Detect generic issue statements that lack actionable details.
+    These should prompt for clarification instead of creating a case.
+    """
+    msg_lower = message.lower().strip()
+
+    # Generic signals without specifics
+    generic_issue_keywords = [
+        "issue",
+        "problem",
+        "something wrong",
+        "not working",
+        "help",
+        "there is a problem",
+        "there's a problem",
+        "there is an issue",
+        "there's an issue",
+        "theres an issue",
+        "theres a issue",
+    ]
+
+    # Specific issue keywords (if present, we have enough to proceed)
+    specific_issue_keywords = [
+        "damage", "damaged", "broken", "defect", "defective", "wrong item",
+        "quality", "ripped", "torn", "stain", "fading", "pilling",
+        "zipper", "seam", "fell apart", "doesn't work", "malfunction",
+        "return", "refund", "exchange", "warranty", "claim", "complaint",
+        "doesn't fit", "too small", "too big", "wrong size", "wrong color",
+        "not what i ordered", "received wrong", "missing parts",
+    ]
+
+    has_generic = any(k in msg_lower for k in generic_issue_keywords)
+    has_specific = any(k in msg_lower for k in specific_issue_keywords)
+
+    # Also treat very short messages as needing details
+    is_too_short = len(msg_lower.split()) <= 3
+
+    return (has_generic or is_too_short) and not has_specific
+
+
 def _format_order_status_response(order: dict, message: str) -> str:
     """
     Generate a helpful response for order status inquiries directly from order data.
@@ -339,6 +380,18 @@ def chat_send(session_id: str, req: ChatMessageRequest):
         status_response = _format_order_status_response(order, req.message)
         add_message(session_id, "assistant", status_response)
         return ChatMessageResponse(session_id=session_id, assistant_message=status_response)
+
+    # If the user mentions a generic issue without details, ask for clarification
+    if _needs_issue_details(req.message) and not (req.reason or "").strip():
+        msg = (
+            f"Thanks for letting us know. Could you share a bit more about the issue with order **{order_id}**?\n\n"
+            "Please include one of the following so I can help right away:\n"
+            "• What went wrong (damaged, wrong item, size/fit, defect, etc.)\n"
+            "• Item SKU (if available)\n"
+            "• Photos of the issue (if relevant)"
+        )
+        add_message(session_id, "assistant", msg)
+        return ChatMessageResponse(session_id=session_id, assistant_message=msg)
 
     # If reason not provided, we do a lightweight inference (keywords)
     inferred_reason = (req.reason or "").strip()

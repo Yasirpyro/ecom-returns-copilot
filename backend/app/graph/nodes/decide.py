@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import json
 from typing import Any, Dict, List, Optional
 
 from app.graph.state import GraphState
+from app.llm.openrouter import get_llm
 
 
 def _parse_dt(dt: str | None) -> datetime | None:
@@ -94,6 +96,40 @@ def _classify(reason: str, msg: str) -> dict:
     }
 
 
+def _llm_classify(reason: str, msg: str) -> dict | None:
+    """
+    Use LLM to classify the issue type. Returns None on failure.
+    Expected output JSON:
+      {"intent": "preference_return|shipping_issue|warranty_issue|vendor_error|unknown", "confidence": 0-1}
+    """
+    prompt = (
+        "You are classifying a customer issue into one intent.\n"
+        "Return ONLY a JSON object with keys: intent, confidence.\n"
+        "Intents: preference_return, shipping_issue, warranty_issue, vendor_error, unknown.\n"
+        "Use unknown if you are not confident.\n\n"
+        f"Reason: {reason}\n"
+        f"Message: {msg}\n"
+    )
+
+    try:
+        llm = get_llm("draft", temperature=0.0, max_tokens=80)
+        response = llm.invoke(prompt)
+        content = (response.content or "").strip()
+        data = json.loads(content)
+        intent = str(data.get("intent", "unknown")).lower()
+        confidence = float(data.get("confidence", 0))
+    except Exception:
+        return None
+
+    if intent not in {"preference_return", "shipping_issue", "warranty_issue", "vendor_error", "unknown"}:
+        return None
+
+    if confidence < 0 or confidence > 1:
+        return None
+
+    return {"intent": intent, "confidence": confidence}
+
+
 def decide_node(state: GraphState) -> GraphState:
     order = state.get("order") or {}
     items = order.get("items", [])
@@ -117,6 +153,17 @@ def decide_node(state: GraphState) -> GraphState:
     any_custom = any(((i.get("product") or {}).get("category") == "custom_personalized") for i in items)
 
     cls = _classify(reason_raw, msg)
+
+    # Try LLM classification first; fall back to keyword heuristics if uncertain
+    llm_cls = _llm_classify(reason_raw, msg)
+    if llm_cls and llm_cls.get("confidence", 0) >= 0.6:
+        intent = llm_cls.get("intent")
+        cls = {
+            "is_preference": intent == "preference_return",
+            "is_shipping_issue": intent == "shipping_issue",
+            "is_warranty_issue": intent == "warranty_issue",
+            "is_vendor_error": intent == "vendor_error",
+        }
 
     decision: Dict[str, Any] = {
         "eligible": False,
